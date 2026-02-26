@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Belus Insurance Group — Analytics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:  #0D1B2A;
+    --slate: #1C2E42;
+    --gold:  #C8963E;
+    --gold2: #E5B96A;
+    --cream: #F5EFE4;
+    --mist:  #D6CEBC;
+    --green: #2E7D4F;
+    --red:   #B33A3A;
+    --bg:    #0A1520;
+    --card:  rgba(255,255,255,0.04);
+    --border:rgba(200,150,62,0.15);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--cream);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+  }
+
+  /* ─── TOP BAR ─── */
+  .topbar {
+    background: var(--navy);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .logo-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--gold);
+  }
+  .topbar-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    color: #fff;
+    font-weight: 700;
+  }
+  .topbar-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--gold2);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .topbar-right {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: rgba(200,150,62,0.6);
+    letter-spacing: 0.12em;
+  }
+
+  /* ─── NAV TABS ─── */
+  .nav-tabs {
+    background: var(--slate);
+    padding: 0 40px;
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    padding: 14px 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--mist);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab:hover { color: var(--gold2); }
+  .tab.active {
+    color: var(--gold);
+    border-bottom-color: var(--gold);
+  }
+
+  /* ─── MAIN CONTENT ─── */
+  .main { padding: 40px; max-width: 1400px; margin: 0 auto; }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ─── KPI ROW ─── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .kpi-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 28px 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--gold);
+  }
+  .kpi-card:hover { border-color: rgba(200,150,62,0.35); }
+  .kpi-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--mist);
+    margin-bottom: 12px;
+  }
+  .kpi-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 40px;
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1;
+  }
+  .kpi-sub {
+    font-size: 12px;
+    color: var(--mist);
+    margin-top: 6px;
+  }
+
+  /* ─── GRID LAYOUTS ─── */
+  .chart-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+  .chart-grid-3 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+
+  /* ─── PANEL ─── */
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 28px;
+  }
+  .panel-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .panel-title .badge {
+    background: rgba(200,150,62,0.15);
+    border: 1px solid var(--border);
+    padding: 3px 10px;
+    border-radius: 2px;
+    font-size: 10px;
+    color: var(--gold2);
+  }
+
+  /* ─── TABLE ─── */
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--mist);
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    font-size: 13px;
+    padding: 12px 12px;
+    border-bottom: 1px solid rgba(200,150,62,0.06);
+    color: var(--cream);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(200,150,62,0.03); }
+  .td-mono { font-family: 'DM Mono', monospace; font-size: 12px; }
+  .td-green { color: #4CAF50; font-weight: 600; }
+  .td-gold  { color: var(--gold2); font-weight: 600; }
+  .td-red   { color: #ef5350; }
+  .td-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 2px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+  }
+  .badge-high     { background: rgba(46,125,79,0.2);   color: #4CAF50; }
+  .badge-critical { background: rgba(179,58,58,0.2);   color: #ef5350; }
+  .badge-medium   { background: rgba(200,150,62,0.2);  color: var(--gold2); }
+
+  /* ─── PROGRESS BAR ─── */
+  .progress-wrap { margin-bottom: 16px; }
+  .progress-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 12px;
+    color: var(--mist);
+  }
+  .progress-bar {
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--gold), var(--gold2));
+    transition: width 1.2s ease;
+  }
+
+  /* ─── TIMELINE ─── */
+  .timeline { position: relative; padding-left: 24px; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px; top: 0; bottom: 0;
+    width: 1px;
+    background: var(--border);
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+    padding-left: 16px;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -20px; top: 6px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--gold);
+    border: 1px solid var(--bg);
+  }
+  .tl-month {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .tl-text {
+    font-size: 13px;
+    color: var(--mist);
+    line-height: 1.6;
+  }
+
+  /* ─── CANVAS ─── */
+  .chart-canvas { max-height: 280px; }
+
+  /* ─── SECTION HEADER ─── */
+  .section-hdr {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .section-hdr h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+    color: #fff;
+  }
+  .section-hdr h2 em { color: var(--gold); font-style: italic; }
+  .section-hdr .line {
+    flex: 1; height: 1px;
+    background: var(--border);
+  }
+
+  @media (max-width: 900px) {
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+    .chart-grid-2, .chart-grid-3 { grid-template-columns: 1fr; }
+    .main { padding: 20px; }
+    .topbar, .nav-tabs { padding: 0 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo-dot"></div>
+    <div>
+      <div class="topbar-title">Belus Insurance Group</div>
+      <div class="topbar-sub">Data & Operations Analytics Dashboard</div>
+    </div>
+  </div>
+  <div class="topbar-right">May 2023 – Oct 2023 &nbsp;|&nbsp; Employee Benefits Division &nbsp;|&nbsp; McKinney, TX</div>
+</div>
+
+<!-- DISCLAIMER BANNER -->
+<div style="background:#1A2E3F;border-bottom:1px solid rgba(200,150,62,0.2);padding:8px 40px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:#E5B96A;letter-spacing:0.1em;">
+  ⚠&nbsp; ILLUSTRATIVE DATA ONLY — Actual figures are proprietary to Belus Insurance Group and are not reproduced here. Structure and methodology reflect real analytical work performed.
+</div>
+
+<!-- NAV TABS -->
+<div class="nav-tabs">
+  <div class="tab active" onclick="switchTab('overview')">Overview</div>
+  <div class="tab" onclick="switchTab('commission')">Commission & Revenue</div>
+  <div class="tab" onclick="switchTab('retention')">Retention Metrics</div>
+  <div class="tab" onclick="switchTab('pe')">PE Due Diligence</div>
+  <div class="tab" onclick="switchTab('skills')">Skills & Tools</div>
+</div>
+
+<!-- ══════════ OVERVIEW ══════════ -->
+<div class="main">
+<div id="tab-overview" class="section active">
+  <div class="section-hdr">
+    <h2>Performance <em>Overview</em></h2>
+    <div class="line"></div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">Data Accuracy Improvement</div>
+      <div class="kpi-value">+20<span style="font-size:22px">%</span></div>
+      <div class="kpi-sub">65% → 87% via systematic auditing</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Carriers Consolidated</div>
+      <div class="kpi-value">3<span style="font-size:22px">+</span></div>
+      <div class="kpi-sub">Unified into single reporting model</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Power BI Dashboards</div>
+      <div class="kpi-value">2</div>
+      <div class="kpi-sub">Adopted by leadership for weekly review</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">PE Datasets Validated</div>
+      <div class="kpi-value">8</div>
+      <div class="kpi-sub">100% validated — zero open issues</div>
+    </div>
+  </div>
+
+  <div class="chart-grid-3">
+    <!-- Activity Breakdown -->
+    <div class="panel">
+      <div class="panel-title">Work Activity Distribution <span class="badge">May–Oct 2023</span></div>
+      <canvas id="activityChart" class="chart-canvas"></canvas>
+    </div>
+    <!-- Skills Radar -->
+    <div class="panel">
+      <div class="panel-title">Competency Depth</div>
+      <canvas id="radarChart" class="chart-canvas"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-grid-2">
+    <!-- Timeline -->
+    <div class="panel">
+      <div class="panel-title">Internship Timeline</div>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="tl-month">May 2023</div>
+          <div class="tl-text">Onboarded. Began ownership of commission reporting and Excel tracker development across Carrier A, B, C datasets.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-month">Jun – Jul 2023</div>
+          <div class="tl-text">First audit cycle completed. Reconciled financial datasets, corrected 36 errors in commission records. Initiated Power BI dashboard build.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-month">Aug 2023</div>
+          <div class="tl-text">Dashboards adopted by leadership. Identified and corrected Power BI retention undercount. Second audit round — 70 errors corrected cumulative.</div>
+        </div>
+        <div class="timeline-item">
+          <div class="tl-month">Sep – Oct 2023</div>
+          <div class="tl-text">PE due diligence begins. Prepared and validated 8 datasets across 3,568 records and 122 fields for the benefits division sale to private equity.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Impact Summary -->
+    <div class="panel">
+      <div class="panel-title">Impact by Category</div>
+      <div class="progress-wrap">
+        <div class="progress-top"><span>Data Accuracy</span><span class="td-green">87%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:87%"></div></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-top"><span>Portfolio Retention Rate</span><span class="td-green">86.5%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:86.5%"></div></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-top"><span>PE Dataset Validation</span><span class="td-green">100%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-top"><span>Reporting Errors Resolved</span><span class="td-green">100%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-top"><span>Carrier Coverage</span><span class="td-gold">100%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-top"><span>Dashboard Adoption</span><span class="td-gold">100%</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ COMMISSION ══════════ -->
+<div id="tab-commission" class="section">
+  <div class="section-hdr">
+    <h2>Commission & <em>Revenue</em></h2>
+    <div class="line"></div>
+  </div>
+
+  <div class="chart-grid-2">
+    <div class="panel">
+      <div class="panel-title">Net Commission by Carrier</div>
+      <canvas id="commBarChart" class="chart-canvas"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Data Accuracy Improvement — Audit Trail</div>
+      <canvas id="accuracyChart" class="chart-canvas"></canvas>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:24px">
+    <div class="panel-title">Multi-Carrier Commission Summary <span class="badge">Illustrative — Proprietary Data Not Reproduced</span></div>
+    <table>
+      <thead>
+        <tr>
+          <th>Carrier</th>
+          <th>Policy Type</th>
+          <th>Gross Commission</th>
+          <th>Adjustments</th>
+          <th>Net Commission</th>
+          <th>Retention Rate</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Carrier A</td><td>Medical</td>    <td class="td-mono">$142,500</td><td class="td-mono td-red">($3,200)</td><td class="td-mono td-green">$139,300</td><td class="td-mono">87.0%</td><td><span class="td-badge badge-high">Reconciled</span></td></tr>
+        <tr><td>Carrier A</td><td>Dental</td>     <td class="td-mono">$28,400</td> <td class="td-mono td-red">($800)</td>  <td class="td-mono td-green">$27,600</td> <td class="td-mono">91.0%</td><td><span class="td-badge badge-high">Reconciled</span></td></tr>
+        <tr><td>Carrier A</td><td>Vision</td>     <td class="td-mono">$9,800</td>  <td class="td-mono td-red">($200)</td>  <td class="td-mono td-green">$9,600</td>  <td class="td-mono">94.0%</td><td><span class="td-badge badge-high">Reconciled</span></td></tr>
+        <tr><td>Carrier B</td><td>Medical</td>    <td class="td-mono">$198,300</td><td class="td-mono td-red">($8,400)</td><td class="td-mono td-green">$189,900</td><td class="td-mono">83.0%</td><td><span class="td-badge badge-high">Reconciled</span></td></tr>
+        <tr><td>Carrier B</td><td>Life/AD&D</td>  <td class="td-mono">$34,600</td> <td class="td-mono td-red">($1,100)</td><td class="td-mono td-green">$33,500</td> <td class="td-mono">89.0%</td><td><span class="td-badge badge-high">Reconciled</span></td></tr>
+        <tr><td>Carrier B</td><td>Disability</td> <td class="td-mono">$21,200</td> <td class="td-mono td-red">($600)</td>  <td class="td-mono td-green">$20,600</td> <td class="td-mono">86.0%</td><td><span class="td-badge badge-high">Reconciled</span></td></tr>
+        <tr><td>Carrier C</td><td>Medical</td>    <td class="td-mono">$115,700</td><td class="td-mono td-red">($5,200)</td><td class="td-mono td-green">$110,500</td><td class="td-mono">80.0%</td><td><span class="td-badge badge-high">Reconciled</span></td></tr>
+        <tr><td>Carrier C</td><td>Dental</td>     <td class="td-mono">$18,900</td> <td class="td-mono td-red">($400)</td>  <td class="td-mono td-green">$18,500</td> <td class="td-mono">88.0%</td><td><span class="td-badge badge-high">Reconciled</span></td></tr>
+        <tr><td>Carrier C</td><td>Ancillary</td>  <td class="td-mono">$11,500</td> <td class="td-mono td-red">($300)</td>  <td class="td-mono td-green">$11,200</td> <td class="td-mono">92.0%</td><td><span class="td-badge badge-high">Reconciled</span></td></tr>
+        <tr style="border-top:1px solid rgba(200,150,62,0.3)">
+          <td colspan="2"><strong>TOTAL</strong></td>
+          <td class="td-mono td-gold"><strong>$580,900</strong></td>
+          <td class="td-mono td-red"><strong>($20,200)</strong></td>
+          <td class="td-mono td-green"><strong>$560,700</strong></td>
+          <td class="td-mono"><strong>87.2% avg</strong></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════ RETENTION ══════════ -->
+<div id="tab-retention" class="section">
+  <div class="section-hdr">
+    <h2>Retention <em>Metrics</em></h2>
+    <div class="line"></div>
+  </div>
+
+  <div class="chart-grid-2">
+    <div class="panel">
+      <div class="panel-title">Monthly Retention by Carrier</div>
+      <canvas id="retentionLineChart" class="chart-canvas"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Retention Distribution — Oct 2023</div>
+      <canvas id="retentionPieChart" class="chart-canvas"></canvas>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:24px">
+    <div class="panel-title">Reporting Errors Identified & Corrected <span class="badge">5 Issues Resolved</span></div>
+    <table>
+      <thead>
+        <tr>
+          <th>Month</th><th>Error Type</th><th>Carrier</th><th>Field Affected</th><th>Root Cause</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Jun '23</td><td>Duplicate Entry</td><td>Carrier B</td><td>Commission Amt</td><td>Carrier feed overlap</td><td><span class="td-badge badge-high">Resolved</span></td></tr>
+        <tr><td>Jul '23</td><td>Missing Policy</td><td>Carrier A</td><td>Policy Count</td><td>Carrier report delay</td><td><span class="td-badge badge-high">Resolved</span></td></tr>
+        <tr><td>Aug '23</td><td>Rate Mismatch</td><td>Carrier C</td><td>Premium Rate</td><td>Stale rate table</td><td><span class="td-badge badge-high">Resolved</span></td></tr>
+        <tr><td>Sep '23</td><td>Retention Undercount</td><td>Carrier B</td><td>Retention %</td><td>Cancelled reactivations</td><td><span class="td-badge badge-high">Resolved</span></td></tr>
+        <tr><td>Oct '23</td><td>Net Comm Error</td><td>Carrier A</td><td>Net Commission ($)</td><td>Adjustment not applied</td><td><span class="td-badge badge-high">Resolved</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════ PE DUE DILIGENCE ══════════ -->
+<div id="tab-pe" class="section">
+  <div class="section-hdr">
+    <h2>PE Due <em>Diligence</em></h2>
+    <div class="line"></div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">Datasets Prepared</div>
+      <div class="kpi-value">8</div>
+      <div class="kpi-sub">100% validated & delivered</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Records Validated</div>
+      <div class="kpi-value">3,568</div>
+      <div class="kpi-sub">Across all datasets</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Fields Validated</div>
+      <div class="kpi-value">122</div>
+      <div class="kpi-sub">Data integrity verified</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Issues Resolved</div>
+      <div class="kpi-value">10</div>
+      <div class="kpi-sub">100% corrected before delivery</div>
+    </div>
+  </div>
+
+  <div class="chart-grid-2">
+    <div class="panel">
+      <div class="panel-title">Dataset Validation Progress</div>
+      <canvas id="peBarChart" class="chart-canvas"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Dataset Validation Checklist <span class="badge">Illustrative — Proprietary Data Not Reproduced</span></div>
+      <table>
+        <thead><tr><th>Dataset</th><th>Records</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Commission History (36mo)</td><td class="td-mono">1,260</td><td><span class="td-badge badge-high">✓ Validated</span></td></tr>
+          <tr><td>Policy Master File</td><td class="td-mono">840</td><td><span class="td-badge badge-high">✓ Validated</span></td></tr>
+          <tr><td>Retention Rate History</td><td class="td-mono">420</td><td><span class="td-badge badge-high">✓ Validated</span></td></tr>
+          <tr><td>Revenue by Carrier</td><td class="td-mono">216</td><td><span class="td-badge badge-high">✓ Validated</span></td></tr>
+          <tr><td>Client Roster (Active)</td><td class="td-mono">380</td><td><span class="td-badge badge-high">✓ Validated</span></td></tr>
+          <tr><td>Net Premium Summary</td><td class="td-mono">108</td><td><span class="td-badge badge-high">✓ Validated</span></td></tr>
+          <tr><td>Benefits Plan Catalog</td><td class="td-mono">54</td><td><span class="td-badge badge-high">✓ Validated</span></td></tr>
+          <tr><td>Lapse & Cancellation Log</td><td class="td-mono">290</td><td><span class="td-badge badge-high">✓ Validated</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SKILLS ══════════ -->
+<div id="tab-skills" class="section">
+  <div class="section-hdr">
+    <h2>Skills & <em>Tools</em></h2>
+    <div class="line"></div>
+  </div>
+
+  <div class="chart-grid-2">
+    <div class="panel">
+      <div class="panel-title">Tools Used</div>
+      <canvas id="toolsChart" class="chart-canvas"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Competency by Category</div>
+      <div class="progress-wrap" style="margin-top:8px">
+        <div class="progress-top"><span>Analytics & Business Intelligence</span><span class="td-green">Expert</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:95%"></div></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-top"><span>Financial Data Reconciliation</span><span class="td-green">Expert</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:93%"></div></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-top"><span>Data Validation & Auditing</span><span class="td-green">Expert</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:90%"></div></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-top"><span>Dashboard Development (Power BI)</span><span class="td-gold">Advanced</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:85%"></div></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-top"><span>Insurance Domain Knowledge</span><span class="td-gold">Advanced</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:80%"></div></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-top"><span>Stakeholder Communication</span><span class="td-gold">Advanced</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:82%"></div></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-top"><span>Due Diligence / M&A Support</span><span class="td-gold">Proficient</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:75%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Full Skill Inventory</div>
+    <table>
+      <thead>
+        <tr><th>Category</th><th>Tool / Skill</th><th>Application</th><th>Proficiency</th><th>Use Case @ Belus</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Analytics & BI</td><td>Power BI</td><td>Dashboard development</td><td><span class="td-badge badge-high">Expert</span></td><td>Retention & revenue dashboards</td></tr>
+        <tr><td>Analytics & BI</td><td>Microsoft Excel</td><td>Advanced modeling & formulas</td><td><span class="td-badge badge-high">Expert</span></td><td>Commission trackers, reconciliation</td></tr>
+        <tr><td>Analytics & BI</td><td>Pivot Tables / Charts</td><td>Multi-dimensional data analysis</td><td><span class="td-badge badge-medium">Advanced</span></td><td>Carrier performance analysis</td></tr>
+        <tr><td>Data Operations</td><td>Financial Reconciliation</td><td>Multi-carrier commission reconciliation</td><td><span class="td-badge badge-high">Expert</span></td><td>Monthly commission cycles</td></tr>
+        <tr><td>Data Operations</td><td>Data Validation</td><td>Error detection & correction</td><td><span class="td-badge badge-high">Expert</span></td><td>20% accuracy improvement</td></tr>
+        <tr><td>Data Operations</td><td>Audit Processes</td><td>Policy & financial dataset auditing</td><td><span class="td-badge badge-medium">Advanced</span></td><td>PE due diligence prep</td></tr>
+        <tr><td>Data Operations</td><td>Dataset Preparation</td><td>Structuring data for M&A</td><td><span class="td-badge badge-medium">Advanced</span></td><td>Benefits division sale</td></tr>
+        <tr><td>Domain</td><td>Insurance Brokerage</td><td>Multi-carrier benefits management</td><td><span class="td-badge badge-medium">Proficient</span></td><td>Employee benefits operations</td></tr>
+        <tr><td>Domain</td><td>PE Due Diligence</td><td>Dataset prep for M&A transactions</td><td><span class="td-badge badge-medium">Proficient</span></td><td>Benefits division sale to PE</td></tr>
+        <tr><td>Collaboration</td><td>Stakeholder Reporting</td><td>Cross-functional standardization</td><td><span class="td-badge badge-medium">Advanced</span></td><td>Leadership & ops teams</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div><!-- end .main -->
+
+<script>
+Chart.defaults.color = '#D6CEBC';
+Chart.defaults.font.family = 'DM Sans';
+Chart.defaults.borderColor = 'rgba(200,150,62,0.1)';
+
+const GOLD = '#C8963E', GOLD2 = '#E5B96A', NAVY = '#0D1B2A',
+      SLATE = '#1C2E42', GREEN = '#2E7D4F', RED = '#B33A3A',
+      CREAM = '#F5EFE4';
+
+// ─ Activity Donut
+new Chart(document.getElementById('activityChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Commission Reporting', 'Financial Reconciliation', 'Retention Tracking',
+             'Dashboard Dev', 'Data Auditing', 'PE Due Diligence'],
+    datasets: [{
+      data: [25, 18, 17, 15, 10, 15],
+      backgroundColor: [GOLD, '#4CAF50', '#5C8FC2', SLATE, '#8B6A4E', RED],
+      borderWidth: 2,
+      borderColor: '#0A1520',
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 11, family: 'DM Mono' },
+        boxWidth: 12, padding: 12 } }
+    },
+    cutout: '62%'
+  }
+});
+
+// ─ Radar
+new Chart(document.getElementById('radarChart'), {
+  type: 'radar',
+  data: {
+    labels: ['Reconciliation', 'Dashboards', 'Data Integrity', 'Stakeholder\nReporting', 'Due Diligence', 'Retention\nAnalysis'],
+    datasets: [{
+      label: 'Skill Depth',
+      data: [95, 88, 92, 82, 78, 87],
+      backgroundColor: 'rgba(200,150,62,0.15)',
+      borderColor: GOLD,
+      borderWidth: 2,
+      pointBackgroundColor: GOLD,
+      pointRadius: 4
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      r: {
+        min: 60, max: 100,
+        ticks: { display: false },
+        grid: { color: 'rgba(200,150,62,0.1)' },
+        angleLines: { color: 'rgba(200,150,62,0.1)' },
+        pointLabels: { font: { size: 10, family: 'DM Mono' }, color: '#D6CEBC' }
+      }
+    }
+  }
+});
+
+// ─ Commission Bar
+new Chart(document.getElementById('commBarChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Carrier A\nMedical', 'Carrier A\nDental', 'Carrier A\nVision',
+             'Carrier B\nMedical', 'Carrier B\nLife', 'Carrier B\nDisability',
+             'Carrier C\nMedical', 'Carrier C\nDental', 'Carrier C\nAncillary'],
+    datasets: [
+      { label: 'Gross Commission', data: [142500,28400,9800,198300,34600,21200,115700,18900,11500],
+        backgroundColor: 'rgba(200,150,62,0.3)', borderColor: GOLD, borderWidth: 1 },
+      { label: 'Net Commission', data: [139300,27600,9600,189900,33500,20600,110500,18500,11200],
+        backgroundColor: 'rgba(46,125,79,0.4)', borderColor: GREEN, borderWidth: 1 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
+    scales: {
+      y: { ticks: { callback: v => '$' + (v/1000).toFixed(0) + 'k', font: { size: 10 } },
+           grid: { color: 'rgba(200,150,62,0.08)' } },
+      x: { ticks: { font: { size: 9 } }, grid: { display: false } }
+    }
+  }
+});
+
+// ─ Accuracy Line
+new Chart(document.getElementById('accuracyChart'), {
+  type: 'line',
+  data: {
+    labels: ["Baseline\nMay '23", "Audit 1\nJun '23", "Audit 2\nAug '23", "Audit 3\nSep '23", "Final\nOct '23"],
+    datasets: [
+      { label: 'Accuracy Rate', data: [67.1, 75.7, 83.8, 90.0, 91.9],
+        borderColor: GREEN, backgroundColor: 'rgba(46,125,79,0.1)',
+        tension: 0.4, fill: true, pointRadius: 5, pointBackgroundColor: GREEN },
+      { label: 'Error Rate', data: [32.9, 24.3, 16.2, 10.0, 8.1],
+        borderColor: RED, backgroundColor: 'rgba(179,58,58,0.1)',
+        tension: 0.4, fill: false, pointRadius: 5, pointBackgroundColor: RED }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
+    scales: {
+      y: { min: 0, max: 100, ticks: { callback: v => v + '%', font: { size: 10 } },
+           grid: { color: 'rgba(200,150,62,0.08)' } },
+      x: { ticks: { font: { size: 9 } }, grid: { display: false } }
+    }
+  }
+});
+
+// ─ Retention Line
+new Chart(document.getElementById('retentionLineChart'), {
+  type: 'line',
+  data: {
+    labels: ["May '23","Jun '23","Jul '23","Aug '23","Sep '23","Oct '23"],
+    datasets: [
+      { label: 'Carrier A Medical', data: [84,85,86,87,87,87], borderColor: GOLD, tension: 0.3, pointRadius: 4 },
+      { label: 'Carrier A Dental/Vision', data: [90,91,91,92,93,94], borderColor: GOLD2, tension: 0.3, pointRadius: 4 },
+      { label: 'Carrier B All Lines', data: [81,82,83,84,85,86], borderColor: GREEN, tension: 0.3, pointRadius: 4 },
+      { label: 'Carrier C All Lines', data: [79,80,81,82,83,84], borderColor: '#5C8FC2', tension: 0.3, pointRadius: 4 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
+    scales: {
+      y: { min: 75, max: 97, ticks: { callback: v => v + '%', font: { size: 10 } },
+           grid: { color: 'rgba(200,150,62,0.08)' } },
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// ─ Retention Pie
+new Chart(document.getElementById('retentionPieChart'), {
+  type: 'pie',
+  data: {
+    labels: ['Carrier A Medical (87%)', 'Carrier A Dental (94%)', 'Carrier B (86%)', 'Carrier C (84%)'],
+    datasets: [{
+      data: [87, 94, 86, 84],
+      backgroundColor: [GOLD, GOLD2, GREEN, '#5C8FC2'],
+      borderColor: '#0A1520', borderWidth: 2
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { position: 'bottom', labels: { font: { size: 10, family: 'DM Mono' }, boxWidth: 12 } } }
+  }
+});
+
+// ─ PE Bar
+new Chart(document.getElementById('peBarChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Commission\nHistory', 'Policy\nMaster', 'Retention\nHistory', 'Revenue\nCarrier',
+             'Client\nRoster', 'Net Premium', 'Plan\nCatalog', 'Lapse Log'],
+    datasets: [{
+      label: 'Records Validated',
+      data: [1260, 840, 420, 216, 380, 108, 54, 290],
+      backgroundColor: 'rgba(46,125,79,0.4)',
+      borderColor: GREEN, borderWidth: 1
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { callback: v => v.toLocaleString(), font: { size: 10 } },
+           grid: { color: 'rgba(200,150,62,0.08)' } },
+      y: { ticks: { font: { size: 9 } }, grid: { display: false } }
+    }
+  }
+});
+
+// ─ Tools Chart
+new Chart(document.getElementById('toolsChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Power BI', 'Excel', 'Data Validation', 'Reconciliation', 'Auditing', 'PE Prep', 'Stakeholder Rpt'],
+    datasets: [{
+      label: 'Proficiency (%)',
+      data: [88, 95, 92, 93, 90, 78, 82],
+      backgroundColor: [GOLD, GREEN, '#5C8FC2', GREEN, GOLD2, RED, SLATE].map(c => c + '80'),
+      borderColor: [GOLD, GREEN, '#5C8FC2', GREEN, GOLD2, RED, SLATE],
+      borderWidth: 1.5
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { min: 60, max: 100, ticks: { callback: v => v + '%', font: { size: 10 } },
+           grid: { color: 'rgba(200,150,62,0.08)' } },
+      x: { ticks: { font: { size: 9 } }, grid: { display: false } }
+    }
+  }
+});
+
+// ─ Tab switching
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
